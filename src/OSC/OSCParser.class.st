@@ -15,36 +15,52 @@ Class {
 
 { #category : #parse }
 OSCParser class >> parse: aByteStream [
-	| messageArrays messageArray |		
-	messageArrays := OrderedCollection new.	
+	| messageColl messages |		
+	messageColl := OrderedCollection new.	
 	[aByteStream atEnd] whileFalse: [
-		messageArray := (self new initializeFor: aByteStream) parse.
-		messageArray ifNotNil: [
-			messageArrays add: messageArray asArray 
+		messages := (self new initializeFor: aByteStream) parseOneMessage.
+		messages ifNotNil: [
+			messageColl addAll: messages 
 		]
 	].
-	^messageArrays
+	^messageColl
 ]
 
 { #category : #initialization }
 OSCParser >> initializeFor: aByteStream [
 	byteStream := aByteStream.
-	message := OrderedCollection new.
-	types := OrderedCollection new.
+	"message := OrderedCollection new."
+	"types := OrderedCollection new."
+	"the foregoing two now happen at the top of each invocation of #parseOneMessage"
+
 ]
 
 { #category : #accessing }
 OSCParser >> parse [
-	self 
-		parseHeader;
-		parseTypes;
-		parseValues.
-	^message asArray
+	| firstChar |
+	firstChar := byteStream peek.
+
+	firstChar = $/
+		ifTrue: [ ^ self parseOneMessage ].
+
+	(firstChar = $#
+		and: [ (byteStream next: 8) asString = '#bundle' ])
+			ifTrue: [ ^ self parseBundle ].
+
+	^ Error new signal: 'mangled OSC packet'
 ]
 
 { #category : #action }
 OSCParser >> parseBlob [
 	^ nil
+]
+
+{ #category : #accessing }
+OSCParser >> parseBundle [
+	| messageColl |
+
+	messageColl := OrderedCollection new.
+	^ messageColl
 ]
 
 { #category : #accessing }
@@ -73,6 +89,17 @@ OSCParser >> parseNextValueTyped: aType [
 	aType = 98  "b" ifTrue: [^self parseBlob]
 
 
+]
+
+{ #category : #accessing }
+OSCParser >> parseOneMessage [
+	message := OrderedCollection new.
+	types := OrderedCollection new.
+	self 
+		parseHeader;
+		parseTypes;
+		parseValues.
+	^ (OrderedCollection new) add: message asArray; yourself
 ]
 
 { #category : #parse }

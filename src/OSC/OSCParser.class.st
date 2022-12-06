@@ -1,6 +1,6 @@
 "
 OSCParser is a message parser.
-Its main method is parse: which returns a collection of messages. 
+Its main method is parse: which returns a collection of messages.
 "
 Class {
 	#name : #OSCParser,
@@ -10,41 +10,75 @@ Class {
 		'message',
 		'types'
 	],
+	#classVars : [
+		'BundleStr'
+	],
 	#category : #'OSC-Kernel'
 }
 
+{ #category : #'class initialization' }
+OSCParser class >> initialize [
+	"just to get a null-terminated string, which is how OSC goodness arrives..."
+	BundleStr := ('#bundle' nullTerminatedEncodeWith: #utf8) asString.
+]
+
 { #category : #parse }
 OSCParser class >> parse: aByteStream [
-	| messageArrays messageArray |		
-	messageArrays := OrderedCollection new.	
+	| messageColl messages |
+	messageColl := OrderedCollection new.
 	[aByteStream atEnd] whileFalse: [
-		messageArray := (self new initializeFor: aByteStream) parse.
-		messageArray ifNotNil: [
-			messageArrays add: messageArray asArray 
+		messages := (self new initializeFor: aByteStream) parse.
+		messages ifNotNil: [
+			messageColl addAll: messages
 		]
 	].
-	^messageArrays
+	^messageColl
 ]
 
 { #category : #initialization }
 OSCParser >> initializeFor: aByteStream [
 	byteStream := aByteStream.
-	message := OrderedCollection new.
-	types := OrderedCollection new.
+	"message := OrderedCollection new."
+	"types := OrderedCollection new."
+	"the foregoing two now happen at the top of each invocation of #parseOneMessage"
+
 ]
 
 { #category : #accessing }
 OSCParser >> parse [
-	self 
-		parseHeader;
-		parseTypes;
-		parseValues.
-	^message asArray
+	| firstChar |
+	firstChar := byteStream peek asCharacter.
+
+	firstChar = $/
+		ifTrue: [ ^ self parseOneMessage ].
+
+	(firstChar = $#
+		and: [ (byteStream next: 8) asString = BundleStr ])
+			ifTrue: [ ^ self parseBundle ].
+
+	^ Error new signal: 'mangled OSC packet'
 ]
 
 { #category : #action }
 OSCParser >> parseBlob [
 	^ nil
+]
+
+{ #category : #accessing }
+OSCParser >> parseBundle [
+	| messageColl subParses timeTag bunSize |
+
+	timeTag := byteStream next: 8.
+  "for the moment we're not doing anything with the time tag..."
+	messageColl := OrderedCollection new.
+
+	[byteStream atEnd] whileFalse: [
+		bunSize := byteStream nextInt32.
+		subParses := (self class new initializeFor: (byteStream next: bunSize) readStream) parse.
+		messageColl addAll: subParses.
+	].
+
+	^ messageColl
 ]
 
 { #category : #accessing }
@@ -75,11 +109,21 @@ OSCParser >> parseNextValueTyped: aType [
 
 ]
 
+{ #category : #accessing }
+OSCParser >> parseOneMessage [
+	message := OrderedCollection new.
+	types := OrderedCollection new.
+	self
+		parseHeader;
+		parseTypes;
+		parseValues.
+	^ (OrderedCollection new) add: message asArray; yourself
+]
+
 { #category : #parse }
 OSCParser >> parseString [
 	message add: (ZnCharacterEncoder ascii decodeBytes: (byteStream upTo: 0)).
 	(4 - (byteStream position)) \\ 4 timesRepeat: [ byteStream next ]
-	
 ]
 
 { #category : #action }

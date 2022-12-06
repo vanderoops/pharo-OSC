@@ -1,6 +1,6 @@
 "
 OSCParser is a message parser.
-Its main method is parse: which returns a collection of messages. 
+Its main method is parse: which returns a collection of messages.
 "
 Class {
 	#name : #OSCParser,
@@ -24,12 +24,12 @@ OSCParser class >> initialize [
 
 { #category : #parse }
 OSCParser class >> parse: aByteStream [
-	| messageColl messages |		
-	messageColl := OrderedCollection new.	
+	| messageColl messages |
+	messageColl := OrderedCollection new.
 	[aByteStream atEnd] whileFalse: [
 		messages := (self new initializeFor: aByteStream) parse.
 		messages ifNotNil: [
-			messageColl addAll: messages 
+			messageColl addAll: messages
 		]
 	].
 	^messageColl
@@ -81,6 +81,16 @@ OSCParser >> parseBundle [
 ]
 
 { #category : #accessing }
+OSCParser >> parseDouble [
+	message add: (Float fromIEEE64Bit: (byteStream binary nextNumber: 8))
+]
+
+{ #category : #accessing }
+OSCParser >> parseFalse [
+	message add: false
+]
+
+{ #category : #accessing }
 OSCParser >> parseFloat [
 	message add: (Float fromIEEE32Bit: (byteStream binary nextNumber: 4))
 ]
@@ -99,10 +109,20 @@ OSCParser >> parseInt32 [
 ]
 
 { #category : #accessing }
+OSCParser >> parseInt64 [
+	message add: byteStream nextInt64
+]
+
+{ #category : #accessing }
 OSCParser >> parseNextValueTyped: aType [
 	aType = 105 "i" ifTrue: [^self parseInt32].
 	aType = 102 "f" ifTrue: [^self parseFloat].
 	aType = 115 "s" ifTrue: [^self parseString].
+	aType = 100 "d" ifTrue: [^self parseDouble].
+	aType = 104 "h" ifTrue: [^self parseInt64].
+	aType = 84  "T" ifTrue: [^self parseTrue].
+	aType = 70  "F" ifTrue: [^self parseFalse].
+	aType = 78  "N" ifTrue: [^self parseNil].
 	aType = 98  "b" ifTrue: [^self parseBlob]
 
 
@@ -112,18 +132,27 @@ OSCParser >> parseNextValueTyped: aType [
 OSCParser >> parseOneMessage [
 	message := OrderedCollection new.
 	types := OrderedCollection new.
-	self 
+	self
 		parseHeader;
 		parseTypes;
 		parseValues.
 	^ (OrderedCollection new) add: message asArray; yourself
 ]
 
+{ #category : #accessing }
+OSCParser >> parseNil [
+	message add: nil
+]
+
 { #category : #parse }
 OSCParser >> parseString [
 	message add: (ZnCharacterEncoder ascii decodeBytes: (byteStream upTo: 0)).
 	(4 - (byteStream position)) \\ 4 timesRepeat: [ byteStream next ]
-	
+]
+
+{ #category : #accessing }
+OSCParser >> parseTrue [
+	message add: true
 ]
 
 { #category : #action }
@@ -135,8 +164,8 @@ OSCParser >> parseTypes [
 		((4 - (byteStream position \\ 4)) \\ 4) timesRepeat: [byteStream next].
 		^self
 	].
-	  "i   f   s   b"
-	(#[105 102 115 98] includes: next) ifTrue: [types add: next].
+	  "i   f   s   d   h   T  F  N  b"
+	(#[105 102 115 100 104 84 70 78 98] includes: next) ifTrue: [types add: next].
 	self parseTypes.
 ]
 

@@ -1,0 +1,8 @@
+Extension { #name : #Integer }
+
+{ #category : #'*OSC' }
+Integer >> bitInvert64 [
+	"Answer the 64-bit complement of the receiver."
+
+	^ self bitXor: 16rFFFFFFFFFFFFFFFF
+]

@@ -10,15 +10,24 @@ Class {
 		'message',
 		'types'
 	],
+	#classVars : [
+		'BundleStr'
+	],
 	#category : #'OSC-Kernel'
 }
+
+{ #category : #'class initialization' }
+OSCParser class >> initialize [
+	"just to get a null-terminated string, which is how OSC goodness arrives..."
+	BundleStr := ('#bundle' nullTerminatedEncodeWith: #utf8) asString.
+]
 
 { #category : #parse }
 OSCParser class >> parse: aByteStream [
 	| messageColl messages |		
 	messageColl := OrderedCollection new.	
 	[aByteStream atEnd] whileFalse: [
-		messages := (self new initializeFor: aByteStream) parseOneMessage.
+		messages := (self new initializeFor: aByteStream) parse.
 		messages ifNotNil: [
 			messageColl addAll: messages 
 		]
@@ -38,13 +47,13 @@ OSCParser >> initializeFor: aByteStream [
 { #category : #accessing }
 OSCParser >> parse [
 	| firstChar |
-	firstChar := byteStream peek.
+	firstChar := byteStream peek asCharacter.
 
 	firstChar = $/
 		ifTrue: [ ^ self parseOneMessage ].
 
 	(firstChar = $#
-		and: [ (byteStream next: 8) asString = '#bundle' ])
+		and: [ (byteStream next: 8) asString = BundleStr ])
 			ifTrue: [ ^ self parseBundle ].
 
 	^ Error new signal: 'mangled OSC packet'
@@ -57,9 +66,17 @@ OSCParser >> parseBlob [
 
 { #category : #accessing }
 OSCParser >> parseBundle [
-	| messageColl |
+	| messageColl subParses timeTag bunSize |
 
+	timeTag := byteStream next: 8.
 	messageColl := OrderedCollection new.
+
+	[byteStream atEnd] whileFalse: [
+		bunSize := byteStream nextInt32.
+		subParses := (self class new initializeFor: (byteStream next: bunSize) readStream) parse.
+		messageColl addAll: subParses.
+	].
+
 	^ messageColl
 ]
 

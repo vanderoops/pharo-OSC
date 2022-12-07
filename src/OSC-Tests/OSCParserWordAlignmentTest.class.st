@@ -58,7 +58,7 @@ OSCParserWordAlignmentTest >> setUpParsedMessages [
 { #category : #setup }
 OSCParserWordAlignmentTest >> setUpStartingNumberArray [
 	| headerString typeMarker sizeOfPad nulls headerArray |
-	headerString := 'Head'.
+	headerString := '/Hed'.
 	typeMarker := ',s'.
 	sizeOfPad :=  4 -  typeMarker size.
 	nulls := Array new: sizeOfPad withAll: 0.

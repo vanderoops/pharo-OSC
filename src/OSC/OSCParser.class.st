@@ -44,7 +44,7 @@ OSCParser >> initializeFor: aByteStream [
 
 ]
 
-{ #category : #accessing }
+{ #category : #parsing }
 OSCParser >> parse [
 	| firstChar |
 	firstChar := byteStream peek asCharacter.
@@ -59,12 +59,12 @@ OSCParser >> parse [
 	^ Error new signal: 'mangled OSC packet'
 ]
 
-{ #category : #action }
+{ #category : #'element-parsing' }
 OSCParser >> parseBlob [
 	^ nil
 ]
 
-{ #category : #accessing }
+{ #category : #parsing }
 OSCParser >> parseBundle [
 	| messageColl subParses timeTag bunSize |
 
@@ -81,22 +81,22 @@ OSCParser >> parseBundle [
 	^ messageColl
 ]
 
-{ #category : #accessing }
-OSCParser >> parseDouble [
-	message add: (Float fromIEEE64Bit: (byteStream binary nextNumber: 8))
-]
-
-{ #category : #accessing }
+{ #category : #'element-parsing' }
 OSCParser >> parseFalse [
 	message add: false
 ]
 
-{ #category : #accessing }
-OSCParser >> parseFloat [
+{ #category : #'element-parsing' }
+OSCParser >> parseFloat32 [
 	message add: (Float fromIEEE32Bit: (byteStream binary nextNumber: 4))
 ]
 
-{ #category : #accessing }
+{ #category : #'element-parsing' }
+OSCParser >> parseFloat64 [
+	message add: (Float fromIEEE64Bit: (byteStream binary nextNumber: 8))
+]
+
+{ #category : #parsing }
 OSCParser >> parseHeader [
 	|header|
 	header := (byteStream upTo: $, asInteger) copyWithout: 0.
@@ -104,22 +104,22 @@ OSCParser >> parseHeader [
 
 ]
 
-{ #category : #accessing }
+{ #category : #'element-parsing' }
 OSCParser >> parseInt32 [
 	message add: byteStream nextInt32
 ]
 
-{ #category : #accessing }
+{ #category : #'element-parsing' }
 OSCParser >> parseInt64 [
 	message add: byteStream nextInt64
 ]
 
-{ #category : #accessing }
+{ #category : #parsing }
 OSCParser >> parseNextValueTyped: aType [
 	aType = 105 "i" ifTrue: [^self parseInt32].
-	aType = 102 "f" ifTrue: [^self parseFloat].
+	aType = 102 "f" ifTrue: [^self parseFloat32].
 	aType = 115 "s" ifTrue: [^self parseString].
-	aType = 100 "d" ifTrue: [^self parseDouble].
+	aType = 100 "d" ifTrue: [^self parseFloat64].
 	aType = 104 "h" ifTrue: [^self parseInt64].
 	aType = 84  "T" ifTrue: [^self parseTrue].
 	aType = 70  "F" ifTrue: [^self parseFalse].
@@ -129,7 +129,12 @@ OSCParser >> parseNextValueTyped: aType [
 
 ]
 
-{ #category : #accessing }
+{ #category : #'element-parsing' }
+OSCParser >> parseNil [
+	message add: nil
+]
+
+{ #category : #parsing }
 OSCParser >> parseOneMessage [
 	message := OrderedCollection new.
 	types := OrderedCollection new.
@@ -140,23 +145,18 @@ OSCParser >> parseOneMessage [
 	^ (OrderedCollection new) add: message asArray; yourself
 ]
 
-{ #category : #accessing }
-OSCParser >> parseNil [
-	message add: nil
-]
-
-{ #category : #parse }
+{ #category : #'element-parsing' }
 OSCParser >> parseString [
 	message add: (ZnCharacterEncoder ascii decodeBytes: (byteStream upTo: 0)).
 	(4 - (byteStream position)) \\ 4 timesRepeat: [ byteStream next ]
 ]
 
-{ #category : #accessing }
+{ #category : #'element-parsing' }
 OSCParser >> parseTrue [
 	message add: true
 ]
 
-{ #category : #action }
+{ #category : #'element-parsing' }
 OSCParser >> parseTypes [
 	| next |
 	byteStream atEnd ifTrue: [^self].
@@ -170,7 +170,7 @@ OSCParser >> parseTypes [
 	self parseTypes.
 ]
 
-{ #category : #accessing }
+{ #category : #parsing }
 OSCParser >> parseValues [
 	| aTypeStream |
 	aTypeStream := ReadStream on: types.

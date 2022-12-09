@@ -19,9 +19,14 @@ OSCServer class >> listenOnPort: aPort [
 	^self new listenOnPort: aPort
 ]
 
-{ #category : #testing }
+{ #category : #'message-queue' }
+OSCServer >> discardAllMessages [
+	messageQueue removeAll
+]
+
+{ #category : #'message-queue' }
 OSCServer >> hasMessage [
-	^messageQueue isEmpty not
+	^ messageQueue isEmpty not
 ]
 
 { #category : #'initialize-release' }
@@ -48,7 +53,13 @@ OSCServer >> listenOnPort: aPort [
 
 ]
 
-{ #category : #accessing }
+{ #category : #'message-queue' }
+OSCServer >> messageCount [
+
+	^ messageQueue size
+]
+
+{ #category : #'message-queue' }
 OSCServer >> nextMessage [
 	^ messageQueue next
 ]
